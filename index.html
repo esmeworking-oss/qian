@@ -32,8 +32,8 @@
     --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
             "Helvetica Neue", "PingFang TC", "Microsoft JhengHei", sans-serif;
     --tabbar-h:64px;
-    /* 資產配置色 */
-    --alloc-1:#b9a6e3; --alloc-2:#a8cdec; --alloc-3:#f1cf9c; --alloc-4:#9ad6a9;
+    /* 資產配置色（取自天空藍色票＋暖色，投資=天藍、存款=金黃對比）*/
+    --alloc-1:#87ceeb; --alloc-2:#f3d98a; --alloc-3:#f0a3c0; --alloc-4:#8fd3cb;
   }
 
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -52,7 +52,7 @@
     background:linear-gradient(180deg,#f3f2f6 0%, #eceef1 100%);
     overflow:hidden;
     padding-top:env(safe-area-inset-top);     /* 避開瀏海/狀態列，修跑版 */
-    padding-bottom:calc(var(--tabbar-h) + 24px);
+    padding-bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 24px);
   }
 
   /* ---- 總覽工具列（右上角備份/編輯，取代原頂部列）---- */
@@ -153,7 +153,9 @@
   /* ---- Tab Bar ---- */
   .tabbar{
     position:fixed; z-index:40; left:0; right:0; bottom:0;
-    max-width:430px; margin:0 auto; height:var(--tabbar-h);
+    max-width:430px; margin:0 auto;
+    /* 內容高度固定 64px，再把底部安全區「加」在下面，避免 border-box 把 padding 從 64px 扣掉、把 icon 擠到上緣 */
+    height:calc(var(--tabbar-h) + env(safe-area-inset-bottom));
     display:flex;
     background:rgba(255,255,255,0.82);
     backdrop-filter:saturate(180%) blur(20px);
@@ -172,7 +174,7 @@
   .fab{
     position:fixed; z-index:41;
     right:max(20px, calc(50vw - 215px + 20px));
-    bottom:calc(var(--tabbar-h) + 20px);
+    bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 20px);
     width:58px; height:58px; border-radius:50%;
     background:var(--blue); color:#fff; border:none;
     display:flex; align-items:center; justify-content:center;
@@ -204,8 +206,9 @@
     --exp:#ed8fb2;                    /* 支出＝淺粉紅 */
     --inc-soft:rgba(90,168,230,0.14);
     --exp-soft:rgba(237,143,178,0.18);
-    --cat-food:#9aceeb; --cat-look:#eb9aca; --cat-fitness:#a46c8e;
-    --cat-transit:#ebdf9a; --cat-life:#a49c6c; --cat-study:#6c8ea4;
+    /* 種類色：天藍→玫瑰粉→金黃→湖水綠→淺粉→奶油黃（冷暖交錯，相鄰可辨）*/
+    --cat-food:#87ceeb; --cat-look:#f0a3c0; --cat-fitness:#f3d98a;
+    --cat-transit:#8fd3cb; --cat-life:#f8cbdd; --cat-study:#fbefb6;
     --cat-track:rgba(118,118,128,0.14);
   }
 
@@ -250,10 +253,19 @@
   .day-date{ font-size:14px; font-weight:600; color:var(--gray-2); }
   .day-date i{ font-style:normal; color:var(--gray); font-weight:400; margin-left:3px; }
   .day-sum{ font-size:13px; color:var(--gray); }
-  .tx-row{ width:100%; border:none; background:transparent; cursor:pointer;
+  .tx-swipe{ position:relative; overflow:hidden; border-radius:12px; }
+  .tx-row{ position:relative; z-index:1; width:100%; border:none; background:var(--white); cursor:pointer;
     display:flex; align-items:center; gap:12px; padding:11px 2px; text-align:left;
-    border-radius:12px; transition:background .12s; font-family:var(--font); }
-  .tx-row:active{ background:rgba(0,0,0,0.04); }
+    border-radius:12px; font-family:var(--font); touch-action:pan-y; will-change:transform;
+    transition:transform .26s cubic-bezier(.22,.61,.36,1); }
+  .tx-swipe.dragging .tx-row{ transition:none; }
+  .tx-row:active{ background:#f5f5f7; }
+  .tx-del{ position:absolute; z-index:0; top:0; right:0; bottom:0; width:84px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    border:none; background:var(--exp); color:#fff; cursor:pointer;
+    font-family:var(--font); font-size:12px; font-weight:600; letter-spacing:.02em; }
+  .tx-del .material-symbols-outlined{ font-size:20px; }
+  .tx-del:active{ filter:brightness(.94); }
   .tx-ic{ width:38px; height:38px; border-radius:11px; flex:none;
     display:flex; align-items:center; justify-content:center;
     background:rgba(118,118,128,0.10); color:var(--gray-2); }
@@ -485,6 +497,17 @@
   .inv-pnl .k{ font-size:14px; color:var(--gray-2); }
   .inv-pnl .v{ font-size:16px; font-weight:700; }
 
+  /* 股票 / 黃金 兩類加總 */
+  .inv-split{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:2px 0 14px; }
+  .inv-split.solo{ grid-template-columns:1fr; }
+  .isplit{ background:var(--white); border-radius:16px; padding:13px 15px; }
+  .isplit-top{ display:flex; align-items:center; gap:7px; margin-bottom:8px; }
+  .isplit-dot{ width:9px; height:9px; border-radius:50%; flex:none; }
+  .isplit-k{ font-size:13px; color:var(--gray-2); }
+  .isplit-n{ margin-left:auto; font-size:12px; color:var(--gray); }
+  .isplit-v{ font-size:18px; letter-spacing:-0.01em; }
+  .isplit-p{ font-size:13px; margin-top:3px; }
+
   .hold-row{ width:100%; border:none; background:transparent; cursor:pointer; font-family:var(--font);
     display:flex; align-items:flex-start; gap:11px; padding:12px 2px; text-align:left; }
   .hold-row:active{ background:rgba(0,0,0,0.04); border-radius:12px; }
@@ -511,7 +534,6 @@
   .hf input{ flex:1; border:none; background:transparent; font-size:16px; font-weight:600;
     font-family:var(--font); color:var(--ink); outline:none; text-align:right; min-width:0; }
   .hf input::placeholder{ color:var(--gray); font-weight:400; }
-  .hf input[type="text"]{ text-align:left; }   /* 名稱/代號靠左，數字欄維持靠右 */
   .hf .unit{ font-size:14px; color:var(--gray); flex:none; }
   .hold-preview{ display:flex; justify-content:space-between; padding:18px 4px 22px; }
   .hold-preview .pv{ text-align:center; flex:1; }
@@ -524,12 +546,11 @@
 
   /* 投資頁卡片內文字縮小到 12~14px */
   #investBody .card .card-title{ font-size:14px; }
-  /* 投資內容：標題差異化（綠色資產色短條 + 略加重 + 分隔線）*/
+  /* 投資內容：標題差異化（綠色資產色短條 + 略加重）*/
   #investBody .card .inv-card-title{
     display:flex; align-items:center; gap:8px;
     font-weight:600; color:var(--ink); letter-spacing:0.01em;
-    padding-bottom:11px; margin-bottom:6px;
-    border-bottom:1px solid var(--hairline);
+    margin-bottom:8px;
   }
   #investBody .card .inv-card-title::before{
     content:""; flex:none; width:3px; height:13px;
@@ -559,10 +580,14 @@
   #view-home .a-name{ font-size:14px; }
   #view-home .a-pct{ font-size:14px; }
 
-  .toast{ position:fixed; z-index:60; left:50%; bottom:calc(var(--tabbar-h) + 30px); transform:translateX(-50%) translateY(10px);
+  .toast{ position:fixed; z-index:60; left:50%; bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 30px); transform:translateX(-50%) translateY(10px);
     background:rgba(0,0,0,0.82); color:#fff; font-size:14px; font-weight:600; padding:10px 18px; border-radius:99px;
     opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .toast.has-act{ pointer-events:auto; display:flex; align-items:center; gap:4px; padding:8px 8px 8px 18px; }
+  .toast-act{ border:none; background:transparent; color:var(--blue); font:inherit; font-weight:700;
+    padding:5px 14px; border-radius:99px; cursor:pointer; }
+  .toast-act:active{ background:rgba(255,255,255,0.14); }
 
   /* ---- 總覽：可點編輯的負債欄 + 投資帳戶（依類別）---- */
   .two-col .col-btn{ border:none; background:transparent; font-family:var(--font); cursor:pointer; padding:0; text-align:left; }
@@ -996,11 +1021,92 @@
     renderAmounts();   // 既有函式
   }
 
-  function toast(msg){
+  function toast(msg, action){
     const t = document.getElementById('toast');
-    t.textContent = msg; t.classList.add('show');
-    clearTimeout(t._timer); t._timer = setTimeout(()=> t.classList.remove('show'), 1300);
+    if(action){
+      t.innerHTML = `<span></span><button class="toast-act" type="button"></button>`;
+      t.querySelector('span').textContent = msg;
+      const btn = t.querySelector('.toast-act');
+      btn.textContent = action.label;
+      btn.onclick = ()=>{ t.classList.remove('show'); clearTimeout(t._timer); action.fn(); };
+      t.classList.add('has-act');
+    } else {
+      t.classList.remove('has-act'); t.textContent = msg;
+    }
+    t.classList.add('show');
+    clearTimeout(t._timer); t._timer = setTimeout(()=> t.classList.remove('show'), action ? 4200 : 1300);
   }
+
+  /* ---------- 明細：左滑刪除（iOS 風格，附復原）---------- */
+  const Swipe = {
+    ACTION_W: 84, THRESHOLD: 42,
+    openEl: null, el: null, row: null,
+    startX: 0, startY: 0, base: 0, curTx: 0,
+    dragging: false, decided: false, suppress: false,
+    init(pane){
+      pane.addEventListener('touchstart', e=> this.start(e), { passive:true });
+      pane.addEventListener('touchmove',  e=> this.move(e),  { passive:false });
+      pane.addEventListener('touchend',   ()=> this.end());
+      pane.addEventListener('touchcancel',()=> this.end());
+    },
+    start(e){
+      this.suppress = false;
+      const swipe = e.target.closest('.tx-swipe');
+      if(this.openEl && swipe !== this.openEl){ this.close(this.openEl); this.suppress = true; }
+      const row = e.target.closest('.tx-row');
+      if(!row){ this.el = null; return; }
+      this.el = row.parentElement; this.row = row;
+      const tch = e.touches[0];
+      this.startX = tch.clientX; this.startY = tch.clientY;
+      this.base = this.curTx = (this.openEl === this.el) ? -this.ACTION_W : 0;
+      this.dragging = false; this.decided = false;
+    },
+    move(e){
+      if(!this.el) return;
+      const tch = e.touches[0];
+      const dx = tch.clientX - this.startX, dy = tch.clientY - this.startY;
+      if(!this.decided){
+        if(Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+        this.decided = true;
+        this.dragging = Math.abs(dx) > Math.abs(dy) + 2;   // 水平意圖才接管，垂直留給捲動
+        if(this.dragging) this.el.classList.add('dragging');
+      }
+      if(!this.dragging) return;
+      e.preventDefault();
+      let tx = this.base + dx;
+      if(tx > 0) tx *= 0.3;                                            // 往右越界阻尼
+      else if(tx < -this.ACTION_W) tx = -this.ACTION_W + (tx + this.ACTION_W) * 0.3;  // 往左越界阻尼
+      this.curTx = tx;
+      this.row.style.transform = `translateX(${tx}px)`;
+    },
+    end(){
+      if(!this.el) return;
+      const el = this.el;
+      el.classList.remove('dragging');
+      if(this.dragging){
+        if(this.curTx <= -this.THRESHOLD) this.open(el); else this.close(el);
+        this.suppress = true;                              // 拖曳後抑制隨之而來的 click
+      }
+      this.el = null; this.row = null; this.dragging = false; this.decided = false;
+    },
+    open(el){ el.querySelector('.tx-row').style.transform = `translateX(${-this.ACTION_W}px)`; this.openEl = el; },
+    close(el){ if(!el) return; el.querySelector('.tx-row').style.transform = ''; if(this.openEl === el) this.openEl = null; },
+    // 列被點擊時呼叫：回傳 true 代表「不要開編輯表單」（剛拖曳過、或有列正開著時點擊只收起）
+    consumeClick(){
+      if(this.suppress){ this.suppress = false; return true; }
+      if(this.openEl){ this.close(this.openEl); return true; }
+      return false;
+    },
+    remove(id){
+      const t = DB.tx(id);
+      if(!t) return;
+      const snapshot = { ...t };
+      this.openEl = null;
+      DB.remove(id);
+      Ledger.render();
+      toast('已刪除這筆', { label:'復原', fn(){ DB.restore(snapshot); Ledger.render(); } });
+    }
+  };
 
   /* ---------- 預設資料（規劃書第10節）---------- */
   const SEED_CATS = [
@@ -1048,14 +1154,16 @@
     return { [M]: { food:10000, look:1000, transit:2000, fitness:1500, life:3000, study:2000 } };
   }
   /* 新增項目用的色盤（既有 seed 用 CSS 變數，新項目用 hex；圓環/進度條都吃得下）*/
-  const CAT_PALETTE = ['#9aceeb','#eb9aca','#a46c8e','#ebdf9a','#a49c6c','#6c8ea4',
-    '#ecc8dc','#c4e2d9','#e6d4b9','#cbd1f1','#f1c3d0','#b6dce7'];
+  // 天藍→玫瑰粉→金黃→湖水綠→淺粉→奶油黃→亮藍（新增種類時依序取未用色，用完循環）
+  const CAT_PALETTE = ['#87ceeb','#f0a3c0','#f3d98a','#8fd3cb','#f8cbdd','#fbefb6','#87dbeb'];
   // 既有 seed 用 var(--cat-*)；換算成 hex 才能正確排除已用色
-  const VAR2HEX = {'var(--cat-food)':'#9aceeb','var(--cat-look)':'#eb9aca','var(--cat-fitness)':'#a46c8e',
-    'var(--cat-transit)':'#ebdf9a','var(--cat-life)':'#a49c6c','var(--cat-study)':'#6c8ea4'};
+  const VAR2HEX = {'var(--cat-food)':'#87ceeb','var(--cat-look)':'#f0a3c0','var(--cat-fitness)':'#f3d98a',
+    'var(--cat-transit)':'#8fd3cb','var(--cat-life)':'#f8cbdd','var(--cat-study)':'#fbefb6'};
 
   /* ---------- 投資：常數 + 示範持股 ---------- */
-  const INV_PALETTE = ['#9aceeb','#a46c8e','#ebdf9a','#6c8ea4','#eb9aca','#a49c6c','#ecc8dc','#c4e2d9'];
+  // 投資配色：黃金獨立用兩種黃（金黃、奶油黃）；股票/ETF 用冷色＋粉（皆依市值大→小套色）
+  const GOLD_PALETTE  = ['#f3d98a','#fbefb6'];
+  const STOCK_PALETTE = ['#87ceeb','#f0a3c0','#8fd3cb','#f8cbdd','#87dbeb','#c9f7ff'];
   const KIND_LABEL = { stock_tw:'台股', stock_us:'美股', etf:'ETF', gold:'黃金' };
   const KIND_UNIT  = { stock_tw:'股', stock_us:'股', etf:'股', gold:'克' };
   function SEED_HOLDINGS(){
@@ -1117,6 +1225,7 @@
     add(d){ this.transactions.push({id:uid(), createdAt:Date.now(), ...d}); this._saveTx(); },
     update(id,d){ Object.assign(this.tx(id), d); this._saveTx(); },
     remove(id){ this.transactions = this.transactions.filter(t=>t.id!==id); this._saveTx(); },
+    restore(t){ this.transactions.push(t); this._saveTx(); },
     setBudget(mk,catId,limit){
       this.budgets[mk] = this.budgets[mk] || {};
       if(limit===null || limit<=0) delete this.budgets[mk][catId]; else this.budgets[mk][catId]=limit;
@@ -1136,7 +1245,7 @@
       this._saveCats(); this._saveBudgets();
     },
     catTxCount(id){ return this.transactions.filter(t=>t.category===id).length; },
-    clearAll(){ ['qian.transactions','qian.budgets','qian.categories','qian.holdings'].forEach(k=>localStorage.removeItem(k)); location.reload(); }
+    clearAll(){ localStorage.setItem('qian.transactions','[]'); localStorage.setItem('qian.budgets','{}'); location.reload(); }
   };
 
   /* ---------- Ledger 總控 ---------- */
@@ -1180,14 +1289,18 @@
     const sub = [acct && acct.name, t.note].filter(Boolean).join(' · ');
     const sign = t.type==='income' ? '+' : '−';
     const cls  = t.type==='income' ? 'inc' : 'exp';
-    return `<button class="tx-row" data-id="${t.id}">
-      <span class="tx-ic"><span class="material-symbols-outlined">${cat?cat.icon:'help'}</span></span>
-      <div class="tx-mid">
-        <div class="tx-name">${esc(cat?cat.name:'未分類')}</div>
-        ${sub ? `<div class="tx-sub">${esc(sub)}</div>` : ''}
-      </div>
-      <div class="tx-amt ${cls} amt">${sign}${fmt(t.amount)}</div>
-    </button>`;
+    return `<div class="tx-swipe" data-id="${t.id}">
+      <button class="tx-del" data-del="${t.id}" type="button" tabindex="-1" aria-label="刪除這筆">
+        <span class="material-symbols-outlined">delete</span>刪除</button>
+      <button class="tx-row" data-id="${t.id}">
+        <span class="tx-ic"><span class="material-symbols-outlined">${cat?cat.icon:'help'}</span></span>
+        <div class="tx-mid">
+          <div class="tx-name">${esc(cat?cat.name:'未分類')}</div>
+          ${sub ? `<div class="tx-sub">${esc(sub)}</div>` : ''}
+        </div>
+        <div class="tx-amt ${cls} amt">${sign}${fmt(t.amount)}</div>
+      </button>
+    </div>`;
   }
   function budgetGaugeHTML(){
     const mk = Ledger.monthKey();
@@ -1269,7 +1382,14 @@
       });
     }
     pane.innerHTML = html;
-    pane.querySelectorAll('.tx-row').forEach(r=> r.addEventListener('click', ()=> Sheet.open(r.dataset.id)));
+    Swipe.openEl = null;                                    // 重繪後舊節點失效，清除開啟狀態
+    pane.querySelectorAll('.tx-row').forEach(r=> r.addEventListener('click', ()=>{
+      if(Swipe.consumeClick()) return;                     // 剛左滑 / 收起時不開編輯表單
+      Sheet.open(r.dataset.id);
+    }));
+    pane.querySelectorAll('.tx-del').forEach(b=> b.addEventListener('click', e=>{
+      e.stopPropagation(); Swipe.remove(b.dataset.del);
+    }));
     const ea = document.getElementById('emptyAdd');
     if(ea) ea.addEventListener('click', ()=> Sheet.open());
 
@@ -1565,7 +1685,34 @@
       const totalMv = rows.reduce((s,r)=> s+r.mv, 0);
       const totalCost = rows.reduce((s,r)=> s+r.cost, 0);
       const pnl = totalMv - totalCost, roi = totalCost>0 ? pnl/totalCost*100 : 0;
-      const sorted = rows.slice().sort((a,b)=> b.mv-a.mv).map((r,i)=>({ ...r, color:INV_PALETTE[i%INV_PALETTE.length] }));
+      let gi=0, si=0;                                   // 黃金、股票各自的取色游標
+      const sorted = rows.slice().sort((a,b)=> b.mv-a.mv).map(r=>{
+        const color = r.h.kind==='gold' ? GOLD_PALETTE[gi++ % GOLD_PALETTE.length]
+                                        : STOCK_PALETTE[si++ % STOCK_PALETTE.length];
+        return { ...r, color };
+      });
+      // 股票（台股／美股／ETF）vs 黃金 兩類加總
+      const agg = { stock:{mv:0,cost:0,n:0}, gold:{mv:0,cost:0,n:0} };
+      rows.forEach(r=>{ const g = agg[r.h.kind==='gold' ? 'gold' : 'stock']; g.mv+=r.mv; g.cost+=r.cost; g.n++; });
+      const splitDefs = [
+        {key:'stock', name:'股票', dot:STOCK_PALETTE[0]},
+        {key:'gold',  name:'黃金', dot:GOLD_PALETTE[0]}
+      ].filter(d=> agg[d.key].n>0);
+      const splitHTML = `
+        <div class="inv-split${splitDefs.length<2?' solo':''}">
+          ${splitDefs.map(d=>{
+            const g = agg[d.key], p = g.mv-g.cost, pr = g.cost>0 ? p/g.cost*100 : null;
+            return `<div class="isplit">
+              <div class="isplit-top">
+                <span class="isplit-dot" style="background:${d.dot}"></span>
+                <span class="isplit-k">${d.name}</span>
+                <span class="isplit-n">${g.n} 檔</span>
+              </div>
+              <div class="isplit-v amt">$${fmt(g.mv)}</div>
+              <div class="isplit-p ${p>=0?'gain':'loss'} amt">${pnlText(p, pr)}</div>
+            </div>`;
+          }).join('')}
+        </div>`;
       const rowsHTML = sorted.map(r=>{
         const p = r.mv - r.cost, pr = r.cost>0 ? p/r.cost*100 : null;
         const pct = totalMv>0 ? r.mv/totalMv*100 : 0;
@@ -1596,6 +1743,7 @@
               <span class="v ${pnl>=0?'gain':'loss'} amt">${pnlText(pnl, totalCost>0?roi:null)}</span></div>
           </div>
         </div>
+        ${splitHTML}
         <section class="card">
           <div class="card-title inv-card-title">投資內容</div>
           ${rowsHTML}
@@ -1977,7 +2125,7 @@
     lbl.addEventListener('click', ()=>{ Ledger.initCursor(); Ledger.render(); });
     lbl.addEventListener('pointerdown', e=>{ sx=e.clientX; sy=e.clientY;
       timer=setTimeout(()=>{
-        if(confirm('確定要清除「你記的所有帳與預算」嗎？\n此動作無法復原，會還原成示範資料。')) DB.clearAll();
+        if(confirm('確定要清空「你記的所有帳與預算」嗎？\n此動作無法復原，清空後是空白狀態，不會回灌示範資料。')) DB.clearAll();
       }, 3000); });
     lbl.addEventListener('pointermove', e=>{        // 一移動（捲動/滑動）就取消，避免誤觸
       if(timer && (Math.abs(e.clientX-sx)>8 || Math.abs(e.clientY-sy)>8)) cancel();
@@ -2072,6 +2220,7 @@
   DB.load();
   Home.render();
   Ledger.initCursor();
+  Swipe.init(document.getElementById('pane-detail'));
   window.QIAN = { DB, Ledger, Sheet, CatEditor, Invest, HoldingEditor, Home, CashManager, LiabEditor, Backup, Advice, clearAll:()=>DB.clearAll() };
 </script>
 </body>
