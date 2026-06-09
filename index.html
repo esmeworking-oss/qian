@@ -589,13 +589,13 @@
   .quote-refresh .material-symbols-outlined{ font-size:17px; }
   .quote-refresh.busy{ opacity:0.6; pointer-events:none; }
   .quote-refresh.busy .material-symbols-outlined{ animation:ptrspin .7s linear infinite; }
-  /* 編輯表單：取得現價按鈕 */
-  .hf-fetch{ display:flex; align-items:center; justify-content:center; gap:6px; width:100%;
-    margin:-2px 0 4px; border:none; cursor:pointer; background:rgba(0,122,255,0.1); color:var(--blue);
-    font-size:14px; font-weight:600; padding:11px; border-radius:12px; }
+  /* 編輯表單：現價旁取得現價 icon */
+  .hf-fetch{ flex:none; display:inline-flex; align-items:center; justify-content:center;
+    width:30px; height:30px; padding:0; border:none; cursor:pointer; border-radius:50%;
+    background:rgba(0,122,255,0.1); color:var(--blue); }
   .hf-fetch:active{ background:rgba(0,122,255,0.2); }
   .hf-fetch[hidden]{ display:none; }
-  .hf-fetch .material-symbols-outlined{ font-size:19px; }
+  .hf-fetch .material-symbols-outlined{ font-size:18px; }
   .hf-fetch.busy{ opacity:0.6; pointer-events:none; }
   .hf-fetch.busy .material-symbols-outlined{ animation:ptrspin .7s linear infinite; }
 
@@ -656,6 +656,16 @@
   .cash-row .cash-del{ flex:none; width:34px; height:34px; }
   .cash-row .cash-del .material-symbols-outlined{ font-size:20px; }
   #cashSheet .btn-primary, #liabSheet .btn-primary{ margin-top:18px; }
+
+  /* ---- 數學曲線載入動畫（玫瑰曲線 + 拖尾粒子）---- */
+  .loader-overlay{ position:fixed; inset:0; z-index:70; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:18px;
+    background:rgba(238,240,243,0.72); backdrop-filter:saturate(180%) blur(12px);
+    -webkit-backdrop-filter:saturate(180%) blur(12px);
+    opacity:0; pointer-events:none; transition:opacity .25s ease; }
+  .loader-overlay.is-on{ opacity:1; pointer-events:auto; }
+  .loader-overlay svg{ color:var(--blue); overflow:visible; }
+  .loader-msg{ font-size:14px; font-weight:600; color:var(--gray-2); letter-spacing:0.01em; }
 </style>
 </head>
 <body>
@@ -849,13 +859,12 @@
         <button class="kind-chip" data-kind="gold">黃金</button>
       </div>
       <div class="hold-fields">
-        <div class="hf"><label>名稱</label><input id="hfName" type="text" maxlength="12" placeholder="例：元大台灣50"></div>
+        <div class="hf"><label>名稱</label><input id="hfName" type="text" maxlength="12" placeholder="例：元大台灣50（選填）"></div>
         <div class="hf"><label>代號</label><input id="hfSymbol" type="text" maxlength="8" placeholder="例：0050（選填）"></div>
         <div class="hf"><label>數量</label><input id="hfQty" inputmode="decimal" placeholder="0"><span class="unit" id="hfUnit">股</span></div>
         <div class="hf"><label>平均成本</label><input id="hfCost" inputmode="decimal" placeholder="0"><span class="unit">NT$</span></div>
-        <div class="hf"><label>現價</label><input id="hfPrice" inputmode="decimal" placeholder="0"><span class="unit">NT$</span></div>
+        <div class="hf"><label>現價</label><input id="hfPrice" inputmode="decimal" placeholder="0"><button class="hf-fetch" id="hfFetch" type="button" aria-label="從網路取得現價" hidden><span class="material-symbols-outlined">cloud_download</span></button><span class="unit">NT$</span></div>
       </div>
-      <button class="hf-fetch" id="hfFetch" type="button" hidden><span class="material-symbols-outlined">cloud_download</span>從網路取得現價</button>
       <div class="hold-preview">
         <div class="pv"><div class="pk">市值</div><div class="pvv" id="pvMv">$0</div></div>
         <div class="pv"><div class="pk">總損益</div><div class="pvv" id="pvPnl">$0</div></div>
@@ -926,6 +935,16 @@
     </div>
 
     <div class="toast" id="toast"></div>
+
+    <!-- 載入動畫 overlay（玫瑰曲線拖尾粒子）-->
+    <div class="loader-overlay" id="loaderOverlay" aria-hidden="true">
+      <svg id="loaderSvg" viewBox="0 0 100 100" width="120" height="120" fill="none">
+        <g id="loaderRot">
+          <path id="loaderBg" stroke="currentColor" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.1"></path>
+        </g>
+      </svg>
+      <div class="loader-msg" id="loaderMsg">載入中…</div>
+    </div>
 
     <!-- Tab Bar -->
     <nav class="tabbar">
@@ -1062,6 +1081,59 @@
     document.querySelectorAll('#view-ledger .amt, #view-invest .amt').forEach(el=>{ el.dataset.val = el.textContent; });
     renderAmounts();   // 既有函式
   }
+
+  /* ---------- 載入動畫（數學玫瑰曲線 + 拖尾粒子，僅顯示時運行 rAF）---------- */
+  const Loader = (()=>{
+    const NS='http://www.w3.org/2000/svg';
+    const COUNT=64, R=7, PETALS=7, DETAIL=3, SCALE=3.9, TRAIL=0.38;
+    const ROT_MS=28000, PULSE_MS=4200, DUR_MS=4600;
+    let svg, rot, bg, msgEl, overlay, nodes=null, raf=0, t0=0, depth=0;
+
+    const norm = p => ((p%1)+1)%1;
+    function point(p, ds){
+      const t = norm(p)*Math.PI*2;
+      const x = R*Math.cos(t) - DETAIL*ds*Math.cos(PETALS*t);
+      const y = R*Math.sin(t) - DETAIL*ds*Math.sin(PETALS*t);
+      return { x:50+x*SCALE, y:50+y*SCALE };
+    }
+    function buildPath(ds, steps=180){
+      let d='';
+      for(let i=0;i<=steps;i++){ const pt=point(i/steps, ds); d += `${i?'L':'M'} ${pt.x.toFixed(2)} ${pt.y.toFixed(2)} `; }
+      return d;
+    }
+    function ensure(){
+      if(nodes) return;
+      overlay=document.getElementById('loaderOverlay'); svg=document.getElementById('loaderSvg');
+      rot=document.getElementById('loaderRot'); bg=document.getElementById('loaderBg'); msgEl=document.getElementById('loaderMsg');
+      nodes = Array.from({length:COUNT}, ()=>{ const c=document.createElementNS(NS,'circle'); c.setAttribute('fill','currentColor'); rot.appendChild(c); return c; });
+    }
+    function frame(time){
+      const prog=(time%DUR_MS)/DUR_MS;
+      const pulse=(time%PULSE_MS)/PULSE_MS;
+      const ds=0.5 + ((Math.sin(pulse*Math.PI*2 + 0.55)+1)/2)*0.45;
+      rot.setAttribute('transform', `rotate(${-((time%ROT_MS)/ROT_MS)*360} 50 50)`);
+      bg.setAttribute('d', buildPath(ds));
+      for(let i=0;i<COUNT;i++){
+        const off=i/(COUNT-1), pt=point(prog-off*TRAIL, ds), fade=Math.pow(1-off,0.58), n=nodes[i];
+        n.setAttribute('cx', pt.x.toFixed(2)); n.setAttribute('cy', pt.y.toFixed(2));
+        n.setAttribute('r', (1.05+fade*2.75).toFixed(2)); n.setAttribute('opacity', (0.08+fade*0.92).toFixed(3));
+      }
+    }
+    function loop(now){ frame(now-t0); raf=requestAnimationFrame(loop); }
+    return {
+      show(msg){
+        ensure(); depth++; msgEl.textContent = msg || '載入中…';
+        overlay.classList.add('is-on'); overlay.setAttribute('aria-hidden','false');
+        if(!raf){ t0=performance.now(); frame(0); raf=requestAnimationFrame(loop); }
+      },
+      hide(){
+        if(depth>0) depth--;
+        if(depth>0) return;
+        if(overlay){ overlay.classList.remove('is-on'); overlay.setAttribute('aria-hidden','true'); }
+        if(raf){ cancelAnimationFrame(raf); raf=0; }
+      },
+    };
+  })();
 
   function toast(msg, action){
     const t = document.getElementById('toast');
@@ -1806,10 +1878,12 @@
 
   /* ---------- 報價：Yahoo Finance（經 CORS proxy；美股自動換台幣）---------- */
   const Quote = {
-    // 免費 CORS proxy（依序嘗試；Yahoo 常對單一 proxy IP 限流，多備一個提高成功率）
+    // 免費 CORS proxy（依序嘗試；Yahoo 常對單一 proxy IP 限流，多備幾個提高成功率）
+    // r.jina.ai 為文字讀取服務、回應夾帶前綴，靠下方 JSON 萃取處理；穩定度高，當前兩者被限流時的保底
     PROXIES: [
+      u => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u),
       u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
-      u => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u)
+      u => 'https://r.jina.ai/' + u
     ],
     fx: null,                                          // {rate, ts} USD→TWD 快取
     // holding → Yahoo 代號（黃金/無代號回 null，代表手動）
@@ -1821,22 +1895,31 @@
       return s + '.TW';                                // 台股/ETF 預設上市
     },
     async fetchYahoo(sym){
-      const url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(sym);
       let lastErr;
-      for(const wrap of this.PROXIES){
-        try{
-          const res = await fetch(wrap(url));
-          if(!res.ok) throw new Error('HTTP '+res.status);
-          const meta = (await res.json())?.chart?.result?.[0]?.meta;   // 非JSON錯誤頁會在此丟錯→換下一個proxy
-          if(meta?.regularMarketPrice==null) throw new Error('查無報價');
-          return { price: meta.regularMarketPrice, currency: meta.currency };
-        }catch(e){ lastErr = e; }
+      for(const host of ['query1','query2']){            // 雙主機：單一主機被限流時換另一個
+        const url = 'https://'+host+'.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(sym);
+        for(const wrap of this.PROXIES){
+          try{
+            const res = await fetch(wrap(url));
+            if(!res.ok) throw new Error('HTTP '+res.status);
+            const text = await res.text();              // 不直接 .json()：proxy 可能夾帶前綴文字
+            const i = text.indexOf('{'), j = text.lastIndexOf('}');
+            if(i<0 || j<i) throw new Error('非JSON回應');  // 限流/錯誤頁→換下一個proxy
+            const meta = JSON.parse(text.slice(i, j+1))?.chart?.result?.[0]?.meta;
+            if(meta?.regularMarketPrice==null) throw new Error('查無報價');
+            return { price: meta.regularMarketPrice, currency: meta.currency };
+          }catch(e){ lastErr = e; }
+        }
       }
       throw lastErr || new Error('查無報價');
     },
     async usdtwd(){
       if(this.fx && Date.now()-this.fx.ts < 300000) return this.fx.rate;   // 5 分鐘快取
-      const rate = (await (await fetch('https://open.er-api.com/v6/latest/USD')).json())?.rates?.TWD;
+      let rate;
+      try{ rate = (await (await fetch('https://open.er-api.com/v6/latest/USD')).json())?.rates?.TWD; }catch(e){}
+      if(!rate){                                                           // 備援：jsDelivr CDN（CORS 穩定）
+        try{ rate = (await (await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.min.json')).json())?.usd?.twd; }catch(e){}
+      }
       if(!rate) throw new Error('查無匯率');
       this.fx = { rate, ts:Date.now() };
       return rate;
@@ -1852,13 +1935,18 @@
       const targets = DB.holdings.filter(h=> this.ySymbol(h));
       if(!targets.length){ toast('沒有可更新的持股（黃金／無代號需手動）'); return; }
       if(btn) btn.classList.add('busy');
+      Loader.show('更新現價中…');
       let ok=0, fail=0;
-      for(const h of targets){
-        try{ DB.updateHolding(h.id, { price: await this.priceFor(h) }); ok++; }
-        catch(e){ fail++; }
+      try{
+        for(const h of targets){
+          try{ DB.updateHolding(h.id, { price: await this.priceFor(h) }); ok++; }
+          catch(e){ fail++; }
+        }
+      } finally {
+        Loader.hide();
+        if(btn) btn.classList.remove('busy');
       }
       if(ok) localStorage.setItem('qian.quoteTs', String(Date.now()));
-      if(btn) btn.classList.remove('busy');
       Invest.render();
       toast(fail ? `更新 ${ok} 檔，${fail} 檔失敗` : `已更新 ${ok} 檔現價`);
     }
@@ -1916,14 +2004,14 @@
       document.body.style.overflow='';
     },
     save(){
-      const name = document.getElementById('hfName').value.trim();
-      if(!name){ toast('請輸入名稱'); document.getElementById('hfName').focus(); return; }
+      const symbol = document.getElementById('hfSymbol').value.trim();
+      let name = document.getElementById('hfName').value.trim();
+      if(!name) name = symbol.toUpperCase();             // 名稱非必填：留空時以代號當顯示名
       const qty   = parseFloat(document.getElementById('hfQty').value)   || 0;
       const avgCost = parseFloat(document.getElementById('hfCost').value)  || 0;
       const price = parseFloat(document.getElementById('hfPrice').value) || 0;
       if(qty<=0){ toast('請輸入持有數量'); document.getElementById('hfQty').focus(); return; }
       if(price<0 || avgCost<0){ toast('現價/成本不可為負'); return; }
-      const symbol = document.getElementById('hfSymbol').value.trim();
       const data = { kind:this.kind, name, symbol, qty, avgCost, price };
       const wasEdit = !!this.editId;
       if(wasEdit) DB.updateHolding(this.editId, data); else DB.addHolding(data);
