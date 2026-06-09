@@ -51,24 +51,30 @@
     max-width:430px; margin:0 auto; min-height:100vh;
     background:linear-gradient(180deg,#f3f2f6 0%, #eceef1 100%);
     overflow:hidden;
+    padding-top:env(safe-area-inset-top);     /* 避開瀏海/狀態列，修跑版 */
     padding-bottom:calc(var(--tabbar-h) + 24px);
   }
 
-  /* ---- 頂部列 ---- */
-  .topbar{
-    position:sticky; top:0; z-index:30;
-    display:grid; grid-template-columns:1fr auto 1fr; align-items:center;
-    padding:16px 16px 10px;
-    background:rgba(243,242,246,0.72);
-    backdrop-filter:saturate(180%) blur(20px);
-    -webkit-backdrop-filter:saturate(180%) blur(20px);
+  /* ---- 總覽工具列（右上角備份/編輯，取代原頂部列）---- */
+  .home-tools{
+    display:flex; justify-content:flex-end; gap:2px;
+    padding:10px var(--pad) 0;
   }
-  .brand{
-    grid-column:2; display:flex; align-items:center; gap:6px;
-    font-size:17px; font-weight:600; letter-spacing:-0.02em;
-  }
-  .brand .material-symbols-outlined{ font-size:22px; color:var(--ink); }
-  .topbar .tools{ grid-column:3; display:flex; gap:2px; justify-content:flex-end; }
+
+  /* ---- 智慧建議卡 ---- */
+  .advice-card{ margin:14px var(--pad) 0; }
+  .advice-head{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .advice-head > .material-symbols-outlined{ font-size:20px; color:var(--blue); }
+  .advice-title{ font-size:16px; font-weight:700; color:var(--ink); }
+  .advice-tag{ margin-left:auto; font-size:11px; font-weight:600; color:var(--gray);
+    background:rgba(118,118,128,0.10); padding:3px 9px; border-radius:99px; }
+  .advice-item{ display:flex; align-items:flex-start; gap:10px; padding:6px 0; }
+  .advice-ic{ font-size:19px; margin-top:1px; flex:none; }
+  .advice-ic.good{ color:var(--inc); }   /* 藍：正向 */
+  .advice-ic.warn{ color:var(--exp); }   /* 粉：提醒 */
+  .advice-ic.note{ color:var(--gray-2); }/* 灰：中性 */
+  .advice-text{ font-size:14px; line-height:1.5; color:var(--ink); }
+  .advice-foot{ margin-top:8px; font-size:11.5px; color:var(--gray); }
   .icon-btn{
     position:relative; border:none; background:transparent; color:var(--ink);
     width:40px; height:40px; border-radius:50%;
@@ -207,8 +213,6 @@
   .view{ display:none; }
   .view.is-active{ display:block; animation:viewIn .22s ease; }
   @keyframes viewIn{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
-  body[data-tab="ledger"] #editBtn,
-  body[data-tab="invest"] #editBtn{ display:none; }
   body[data-tab="ledger"][data-seg="budget"] #fab{ display:none; }  /* 預算頁用「＋新增項目」即可 */
 
   /* ---- 記帳頂部控制列：月份 + segmented（非 sticky，避免與品牌列重疊）---- */
@@ -595,17 +599,14 @@
 <body>
   <div class="phone">
 
-    <!-- 頂部 -->
-    <header class="topbar">
-      <div class="brand"><span class="material-symbols-outlined">savings</span>錢錢</div>
-      <div class="tools">
-        <button class="icon-btn" id="backupBtn" title="資料備份"><span class="material-symbols-outlined">cloud_sync</span></button>
-        <button class="icon-btn" id="editBtn" title="編輯版面"><span class="material-symbols-outlined">edit</span></button>
-      </div>
-    </header>
-
     <!-- ============ 總覽 view ============ -->
     <section id="view-home" class="view is-active">
+
+    <!-- 總覽工具：備份 / 編輯版面（取代原頂部列）-->
+    <div class="home-tools">
+      <button class="icon-btn" id="backupBtn" title="資料備份"><span class="material-symbols-outlined">cloud_sync</span></button>
+      <button class="icon-btn" id="editBtn" title="編輯版面"><span class="material-symbols-outlined">edit</span></button>
+    </div>
 
     <!-- 淨資產 -->
     <div class="networth">
@@ -657,6 +658,17 @@
       </section>
 
     </main>
+
+    <!-- 智慧建議（離線規則分析；架構上之後可換成 Claude AI）-->
+    <section class="card advice-card">
+      <div class="advice-head">
+        <span class="material-symbols-outlined">auto_awesome</span>
+        <span class="advice-title">智慧建議</span>
+        <span class="advice-tag">離線分析</span>
+      </div>
+      <div class="advice-list" id="adviceList"></div>
+      <div class="advice-foot">依你目前的帳與持股自動產生，不會上傳任何資料</div>
+    </section>
     </section><!-- /view-home -->
 
     <!-- ============ 記帳 view ============ -->
@@ -1689,6 +1701,8 @@
       const cashRow = document.getElementById('cashAllocRow');
       if(cashRow) cashRow.addEventListener('click', ()=>{ if(!editing) CashManager.open(); });
 
+      Advice.render();                                  // 智慧建議（在遮罩前產生，金額才會一起被眼睛遮罩）
+
       // 真值存回 dataset.val 後交給既有眼睛遮罩
       document.querySelectorAll('#view-home .amt').forEach(el=> el.dataset.val = el.textContent);
       renderAmounts();
@@ -1718,6 +1732,103 @@
           </div>
         </div>`;
       }).join('');
+    }
+  };
+
+  /* ---------- 智慧建議：離線規則分析（之後可把 compute() 換成 Claude API 回傳）---------- */
+  const Advice = {
+    money(n){ return `<span class="amt">$${fmt(n)}</span>`; },   // 包成 .amt 沿用眼睛遮罩
+    render(){
+      const el = document.getElementById('adviceList'); if(!el) return;
+      el.innerHTML = this.compute().map(i=>`
+        <div class="advice-item">
+          <span class="material-symbols-outlined advice-ic ${i.tone}">${i.icon}</span>
+          <span class="advice-text">${i.text}</span>
+        </div>`).join('');
+    },
+    compute(){
+      const mk   = todayISO().slice(0,7);
+      const txM  = DB.txByMonth(mk);
+      const exp  = txM.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+      const inc  = txM.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+      const byCat = DB.spentByCategory(mk);
+      const budgetTotal = DB.monthBudgetTotal(mk);
+      const cash = DB.cashTotal(), invest = Home.investTotal(), assets = cash + invest;
+
+      if(!txM.length && !DB.holdings.length)
+        return [{ icon:'auto_awesome', tone:'note',
+          text:'開始記帳、新增持股後，這裡會自動分析你的消費與投資習慣。' }];
+
+      const out = [];
+
+      // 1) 本月結餘 / 儲蓄率
+      if(inc>0 || exp>0){
+        const bal = inc - exp;
+        if(bal < 0) out.push({ icon:'trending_down', tone:'warn',
+          text:`本月支出比收入多了 ${this.money(-bal)}，目前入不敷出，留意一下。` });
+        else if(inc>0){
+          const rate = bal/inc*100;
+          out.push({ icon:'savings', tone: rate>=20?'good':'note',
+            text:`本月結餘 ${this.money(bal)}，存下了收入的 ${rate.toFixed(0)}%${rate>=30?'，很不錯！':(rate<10?'，可以再省一點。':'。')}` });
+        } else out.push({ icon:'payments', tone:'note',
+          text:`本月支出 ${this.money(exp)}，這個月還沒記到收入。` });
+      }
+
+      // 2) 預算：超支優先，其次接近上限
+      if(budgetTotal>0){
+        let worst=null;
+        DB.expenseCats().forEach(c=>{
+          const lim = DB.budget(mk,c.id); if(!lim) return;
+          const used = byCat[c.id]||0;
+          if(used>lim && (!worst || used-lim>worst.over)) worst={c,over:used-lim,used,lim};
+        });
+        if(worst) out.push({ icon:'warning', tone:'warn',
+          text:`${worst.c.name}已超出預算 ${this.money(worst.over)}（用了 ${(worst.used/worst.lim*100).toFixed(0)}%）。` });
+        else {
+          const usedPct = exp/budgetTotal*100;
+          out.push(usedPct>=90
+            ? { icon:'error', tone:'warn', text:`本月預算已用掉 ${usedPct.toFixed(0)}%，快到上限了。` }
+            : { icon:'check_circle', tone:'good', text:`本月預算用了 ${usedPct.toFixed(0)}%，花費還在控制內。` });
+        }
+      }
+
+      // 3) 最大支出分類
+      if(exp>0){
+        let top=null; Object.keys(byCat).forEach(id=>{ if(!top||byCat[id]>byCat[top]) top=id; });
+        if(top){ const c = DB.cat(top);
+          out.push({ icon: c?c.icon:'category', tone:'note',
+            text:`本月花最多的是${c?c.name:'其他'}：${this.money(byCat[top])}，佔總支出 ${(byCat[top]/exp*100).toFixed(0)}%。` });
+        }
+      }
+
+      // 4) 投資集中度
+      if(invest>0){
+        const g={}; DB.holdings.forEach(h=> g[h.kind]=(g[h.kind]||0)+h.price*h.qty);
+        const kinds=Object.keys(g); let topK=kinds[0]; kinds.forEach(k=>{ if(g[k]>g[topK]) topK=k; });
+        const share=g[topK]/invest*100;
+        if(share>=70) out.push({ icon:'donut_large', tone: kinds.length===1?'warn':'note',
+          text:`投資有 ${share.toFixed(0)}% 集中在${KIND_LABEL[topK]||'單一類別'}，分散度偏低，波動會比較大。` });
+      }
+
+      // 5) 投資整體報酬
+      const mvAll=DB.holdings.reduce((s,h)=>s+h.price*h.qty,0);
+      const costAll=DB.holdings.reduce((s,h)=>s+h.avgCost*h.qty,0);
+      if(costAll>0){
+        const pnl=mvAll-costAll, roi=pnl/costAll*100;
+        out.push({ icon: pnl>=0?'trending_up':'trending_down', tone:'note',
+          text:`持股整體${pnl>=0?'獲利':'虧損'} ${this.money(Math.abs(pnl))}，報酬率 ${pnl>=0?'+':'−'}${Math.abs(roi).toFixed(1)}%。` });
+      }
+
+      // 6) 現金佔比
+      if(assets>0 && invest>0){
+        const cashShare=cash/assets*100;
+        if(cashShare>=60) out.push({ icon:'account_balance', tone:'note',
+          text:`現金佔總資產 ${cashShare.toFixed(0)}%，比重偏高，閒置太多可考慮配置。` });
+        else if(cashShare<=10) out.push({ icon:'account_balance', tone:'warn',
+          text:`現金只佔 ${cashShare.toFixed(0)}%，緊急備用金可能偏少。` });
+      }
+
+      return out.slice(0,4);
     }
   };
 
@@ -1961,7 +2072,7 @@
   DB.load();
   Home.render();
   Ledger.initCursor();
-  window.QIAN = { DB, Ledger, Sheet, CatEditor, Invest, HoldingEditor, Home, CashManager, LiabEditor, Backup, clearAll:()=>DB.clearAll() };
+  window.QIAN = { DB, Ledger, Sheet, CatEditor, Invest, HoldingEditor, Home, CashManager, LiabEditor, Backup, Advice, clearAll:()=>DB.clearAll() };
 </script>
 </body>
 </html>
