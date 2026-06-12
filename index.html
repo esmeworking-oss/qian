@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="錢錢" />
-<meta name="theme-color" content="#5aa8e6" />
+<meta name="theme-color" content="#000000" />
 <title>錢錢</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20180%20180%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%236cb4ea%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%234d99dc%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22180%22%20height%3D%22180%22%20rx%3D%2240%22%20fill%3D%22url%28%23g%29%22%2F%3E%3Cg%20transform%3D%22translate%2833.75%2C146.25%29%20scale%28.1172%29%22%20fill%3D%22%23fff%22%3E%3Cpath%20d%3D%22M668.5-531.5Q680-543%20680-560t-11.5-28.5Q657-600%20640-600t-28.5%2011.5Q600-577%20600-560t11.5%2028.5Q623-520%20640-520t28.5-11.5ZM320-620h200v-60H320v60ZM180-120q-34-114-67-227.5T80-580q0-92%2064-156t156-64h200q29-38%2070.5-59t89.5-21q25%200%2042.5%2017.5T720-820q0%205-5%2023-4%2011-7.5%2022.5T702-751l91%2091h87v279l-113%2037-67%20224H480v-80h-80v80H180Z%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E" />
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
@@ -21,16 +21,18 @@
     --blue-focus:#4a97d8;
     --green:#16a34a;        /* 資產 / 正（總覽漲跌語意，保留）*/
     --red:#e5484d;          /* 負債 / 漲(台股慣例) */
-    --ink:#1d1d1f;
-    --bg:#eef0f3;
-    --white:#ffffff;
-    --gray:#8a8a8e;
-    --gray-2:#6e6e73;
-    --hairline:#ececef;
+    --ink:#f5f5f7;          /* 深色：主要文字 */
+    --bg:#000000;           /* 深色：頁面底 */
+    --white:#1c1c1e;        /* 深色：卡片／表面（沿用 --white 命名）*/
+    --gray:#8e8e93;
+    --gray-2:#aeaeb2;
+    --hairline:rgba(255,255,255,0.09);
     --radius:22px;
     --pad:20px;
     --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
             "Helvetica Neue", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    /* 大數字字型：源樣明體丹（GenYoMin2 TC，傳統鉛字風格）。未安裝則回退主字型 */
+    --font-num: "源樣明體丹", "GenYoMin2 TC", var(--font);
     --tabbar-h:64px;
     /* 資產配置色（取自天空藍色票＋暖色，投資=天藍、存款=金黃對比）*/
     --alloc-1:#87ceeb; --alloc-2:#f3d98a; --alloc-3:#f0a3c0; --alloc-4:#8fd3cb;
@@ -49,7 +51,7 @@
   .phone{
     position:relative;
     max-width:430px; margin:0 auto; min-height:100vh;
-    background:linear-gradient(180deg,#f3f2f6 0%, #eceef1 100%);
+    background:#000;
     overflow:hidden;
     padding-top:env(safe-area-inset-top);     /* 避開瀏海/狀態列，修跑版 */
     padding-bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 24px);
@@ -101,7 +103,7 @@
   .icon-btn.editing-on{ background:var(--blue); color:#fff; }
   .icon-btn .dot{
     position:absolute; top:9px; right:10px; width:7px; height:7px;
-    background:var(--red); border-radius:50%; border:1.5px solid #f3f2f6;
+    background:var(--red); border-radius:50%; border:1.5px solid #000;
   }
   .material-symbols-outlined{ font-size:24px; line-height:1;
     font-variation-settings:'wght' 400,'GRAD' 0,'opsz' 24; }
@@ -110,12 +112,12 @@
   .networth{ padding:14px var(--pad) 18px; }
   .networth .nw-label{
     display:flex; align-items:center; gap:6px;
-    font-size:14px; color:var(--gray); margin-bottom:4px;
+    font-size:18px; font-weight:600; color:var(--ink); margin-bottom:6px;
   }
   .networth .nw-label .eye{ width:auto; height:auto; color:var(--gray); }
   .networth .nw-label .eye .material-symbols-outlined{ font-size:18px; }
   .networth .nw-main{ display:flex; align-items:center; justify-content:space-between; }
-  .networth .nw-value{ font-size:32px; font-weight:800; letter-spacing:-0.03em; }
+  .networth .nw-value{ font-size:40px; font-weight:800; letter-spacing:-0.03em; font-family:var(--font-num); }
   .networth .chev{ color:var(--gray); }
 
   /* ---- 卡片 ---- */
@@ -173,7 +175,7 @@
     /* 內容高度固定 64px，再把底部安全區「加」在下面，避免 border-box 把 padding 從 64px 扣掉、把 icon 擠到上緣 */
     height:calc(var(--tabbar-h) + env(safe-area-inset-bottom));
     display:flex;
-    background:rgba(255,255,255,0.82);
+    background:rgba(20,20,22,0.72);
     backdrop-filter:saturate(180%) blur(20px);
     -webkit-backdrop-filter:saturate(180%) blur(20px);
     border-top:1px solid var(--hairline);
@@ -275,7 +277,7 @@
     border-radius:12px; font-family:var(--font); touch-action:pan-y; will-change:transform;
     transition:transform .26s cubic-bezier(.22,.61,.36,1); }
   .tx-swipe.dragging .tx-row{ transition:none; }
-  .tx-row:active{ background:#f5f5f7; }
+  .tx-row:active{ background:#2c2c2e; }
   .tx-del{ position:absolute; z-index:0; top:0; right:0; bottom:0; width:84px;
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
     border:none; background:var(--exp); color:#fff; cursor:pointer;
@@ -287,7 +289,7 @@
     background:rgba(118,118,128,0.10); color:var(--gray-2); }
   .tx-ic .material-symbols-outlined{ font-size:21px; }
   .tx-mid{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
-  .tx-name{ font-size:16px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tx-name{ font-size:16px; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .tx-sub{ font-size:13px; color:var(--gray); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .tx-amt{ font-size:16px; font-weight:700; letter-spacing:-0.01em; flex:none; }
   .tx-amt.inc{ color:var(--inc); }
@@ -306,7 +308,7 @@
   .bgauge-ring{ position:relative; width:62px; height:62px; flex:none; }
   .bgauge-ring svg{ width:100%; height:100%; display:block; }
   .bgauge-track{ fill:var(--cat-track); }
-  .bgauge-rim{ fill:none; stroke:rgba(0,0,0,0.06); stroke-width:1.5; }
+  .bgauge-rim{ fill:none; stroke:rgba(255,255,255,0.08); stroke-width:1.5; }
   .bgauge-water{ transform:translateY(var(--lvl,72px)); animation:bgaugeRise 1s cubic-bezier(.32,.72,0,1); }
   @keyframes bgaugeRise{ from{ transform:translateY(72px); } }   /* 水位從空升到 --lvl */
   .bgauge-wave{ animation:bgaugeWave 2.8s linear infinite; }
@@ -317,7 +319,7 @@
   .bgauge-pct{
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     font-size:17px; letter-spacing:-0.02em; color:var(--ink);
-    text-shadow:0 0 4px rgba(255,255,255,0.7);
+    text-shadow:0 0 4px rgba(0,0,0,0.5);
   }
   .budget-gauge.over .bgauge-pct{ color:#d84d74; }
   .bgauge-pct .material-symbols-outlined{ font-size:26px; color:var(--gray); text-shadow:none; }
@@ -378,7 +380,7 @@
     opacity:0; pointer-events:none; transition:opacity .28s ease; }
   .sheet-backdrop.is-open{ opacity:1; pointer-events:auto; }
   .sheet{ position:fixed; z-index:51; left:0; right:0; bottom:0; max-width:430px; margin:0 auto;
-    background:#f7f7fa; border-radius:22px 22px 0 0;
+    background:#000; border-radius:22px 22px 0 0;
     padding:6px var(--pad) calc(18px + env(safe-area-inset-bottom));
     transform:translateY(100%); transition:transform .32s cubic-bezier(.32,.72,0,1);
     max-height:94vh; overflow-y:auto; }
@@ -401,7 +403,7 @@
   .amount-display{ display:flex; align-items:baseline; justify-content:center; gap:5px; padding:18px 0 12px; }
   .ad-sign{ font-size:30px; font-weight:800; }
   .ad-cur{ font-size:18px; color:var(--gray); font-weight:600; align-self:center; }
-  .ad-num{ font-size:46px; font-weight:800; letter-spacing:-0.03em; }
+  .ad-num{ font-size:46px; font-weight:800; letter-spacing:-0.03em; font-family:var(--font-num); }
   .ad-num.zero{ color:#c7c7cc; }
   .sheet[data-type="expense"] .ad-sign, .sheet[data-type="expense"] .ad-num:not(.zero){ color:var(--exp); }
   .sheet[data-type="income"]  .ad-sign, .sheet[data-type="income"]  .ad-num:not(.zero){ color:var(--inc); }
@@ -435,7 +437,7 @@
   .keypad button{ border:none; background:var(--white); border-radius:14px; padding:16px 0;
     font-size:24px; font-weight:600; color:var(--ink); cursor:pointer; font-family:var(--font);
     box-shadow:0 1px 2px rgba(0,0,0,0.04); transition:transform .08s, background .12s; }
-  .keypad button:active{ transform:scale(0.95); background:#f0f0f4; }
+  .keypad button:active{ transform:scale(0.95); background:#2c2c2e; }
   .kp-del .material-symbols-outlined{ font-size:24px; }
   .kp-save{ grid-column:1 / -1; color:#fff !important; font-size:18px !important; font-weight:700 !important;
     margin-top:2px; box-shadow:none !important; background:var(--blue) !important; }
@@ -508,7 +510,7 @@
   .inv-head .donut{ width:120px; height:120px; }
   .inv-info{ flex:1; min-width:0; }
   .inv-total-k{ font-size:14px; color:var(--gray); margin-bottom:4px; }
-  .inv-total-v{ font-size:28px; font-weight:800; letter-spacing:-0.02em; }
+  .inv-total-v{ font-size:28px; font-weight:800; letter-spacing:-0.02em; font-family:var(--font-num); }
   .inv-pnl{ display:flex; align-items:baseline; gap:8px; margin-top:10px; flex-wrap:wrap; }
   .inv-pnl .k{ font-size:14px; color:var(--gray-2); }
   .inv-pnl .v{ font-size:16px; font-weight:700; }
@@ -617,6 +619,18 @@
   #view-home .a-name{ font-size:14px; }
   #view-home .a-pct{ font-size:14px; }
 
+  /* 首頁資產卡（流動資金 / 投資）— 仿參考圖大卡片 */
+  .asset-card{ cursor:pointer; padding:22px var(--pad); transition:transform .12s; }
+  .asset-card:active{ transform:scale(0.99); }
+  .asset-card .ac-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  #view-home .asset-card .ac-name{ font-size:20px; color:var(--ink); }
+  #view-home .asset-card .ac-val{ font-size:24px; font-weight:600; color:var(--ink); letter-spacing:-0.02em; white-space:nowrap; font-family:var(--font-num); }
+  #view-home .asset-card .ac-val.neg{ color:var(--red); }
+  .asset-card .ac-more{ display:block; margin-top:16px; font-size:24px; color:var(--gray); line-height:1; }
+  .asset-card .ac-foot{ display:flex; align-items:flex-end; justify-content:space-between; gap:10px; margin-top:16px; }
+  .asset-card .ac-foot .ac-more{ margin-top:0; }
+  .asset-card .ac-date{ font-size:13px; color:var(--gray); }
+
   .toast{ position:fixed; z-index:60; left:50%; bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 30px); transform:translateX(-50%) translateY(10px);
     background:rgba(0,0,0,0.82); color:#fff; font-size:14px; font-weight:600; padding:10px 18px; border-radius:99px;
     opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; }
@@ -625,17 +639,14 @@
   .toast-act{ border:none; background:transparent; color:var(--blue); font:inherit; font-weight:700;
     padding:5px 14px; border-radius:99px; cursor:pointer; }
   .toast-act:active{ background:rgba(255,255,255,0.14); }
+  .toast.loading{ display:inline-flex; align-items:center; gap:8px; }
+  .toast .toast-spin{ font-size:18px; animation:ptrspin .7s linear infinite; }
 
   /* ---- 總覽：可點編輯的負債欄 + 投資帳戶（依類別）---- */
   .two-col .col-btn{ border:none; background:transparent; font-family:var(--font); cursor:pointer; padding:0; text-align:left; }
   .two-col .col-btn:active{ opacity:.6; }
   .two-col .col-btn .cell-k{ display:flex; align-items:center; gap:4px; }
   .cell-k .edit-mini{ font-size:14px; color:var(--blue); }
-  #investAcctCard{ cursor:pointer; }
-  #investAcctRows .acct-row:last-child{ margin-bottom:0; }
-  #investAcctRows .acct-val .v{ color:var(--ink); }
-  #investAcctRows .acct-val .p.gain{ color:var(--red); }
-  #investAcctRows .acct-val .p.loss{ color:var(--green); }
   .acct-empty{ font-size:13px; color:var(--gray); padding:4px 0; }
   .a-row-btn{ cursor:pointer; }
   .a-row-btn:active{ opacity:.6; }
@@ -656,16 +667,6 @@
   .cash-row .cash-del{ flex:none; width:34px; height:34px; }
   .cash-row .cash-del .material-symbols-outlined{ font-size:20px; }
   #cashSheet .btn-primary, #liabSheet .btn-primary{ margin-top:18px; }
-
-  /* ---- 數學曲線載入動畫（玫瑰曲線 + 拖尾粒子）---- */
-  .loader-overlay{ position:fixed; inset:0; z-index:70; display:flex; flex-direction:column;
-    align-items:center; justify-content:center; gap:18px;
-    background:rgba(238,240,243,0.72); backdrop-filter:saturate(180%) blur(12px);
-    -webkit-backdrop-filter:saturate(180%) blur(12px);
-    opacity:0; pointer-events:none; transition:opacity .25s ease; }
-  .loader-overlay.is-on{ opacity:1; pointer-events:auto; }
-  .loader-overlay svg{ color:var(--blue); overflow:visible; }
-  .loader-msg{ font-size:14px; font-weight:600; color:var(--gray-2); letter-spacing:0.01em; }
 </style>
 </head>
 <body>
@@ -687,12 +688,11 @@
     <!-- 淨資產 -->
     <div class="networth">
       <div class="nw-label">
-        <span>淨資產 (NT$)</span>
+        <span>我的淨資產 (TWD)</span>
         <button class="icon-btn eye" id="eyeBtn" title="隱藏/顯示金額"><span class="material-symbols-outlined">visibility</span></button>
       </div>
       <div class="nw-main">
         <div class="nw-value amt" id="nwValue">$0</div>
-        <span class="chev material-symbols-outlined">chevron_right</span>
       </div>
     </div>
 
@@ -703,27 +703,34 @@
     <!-- 可拖曳卡片 -->
     <main class="stack" id="stack">
 
-      <!-- 資產 / 負債（總資產自動＝現金＋投資；總負債點開編輯）-->
-      <section class="card" data-key="assets">
-        <div class="two-col">
-          <div class="col">
-            <div class="cell-k">總資產</div>
-            <div class="cell-v pos amt" id="totalAssets">$0</div>
-          </div>
-          <button class="col col-btn" id="liabBtn" type="button">
-            <div class="cell-k">總負債 <span class="material-symbols-outlined edit-mini">edit</span></div>
-            <div class="cell-v neg amt" id="totalLiab">$0</div>
-          </button>
+      <!-- 流動資金（現金/存款總額；點卡片開現金管理）-->
+      <section class="card asset-card" data-key="cash" id="cashCard">
+        <div class="ac-row">
+          <span class="ac-name">流動資金</span>
+          <span class="ac-val amt" id="cashTotal">$0</span>
+        </div>
+        <span class="material-symbols-outlined ac-more">more_horiz</span>
+      </section>
+
+      <!-- 投資（持股市值總額；點卡片跳投資分頁）-->
+      <section class="card asset-card" data-key="invest" id="investCard">
+        <div class="ac-row">
+          <span class="ac-name">投資</span>
+          <span class="ac-val amt" id="investTotal">$0</span>
+        </div>
+        <div class="ac-foot">
+          <span class="material-symbols-outlined ac-more">more_horiz</span>
+          <span class="ac-date" id="investDate"></span>
         </div>
       </section>
 
-      <!-- 投資帳戶（依類別顯示市值＋總報酬，由 Home.render 從持股算；點卡片跳投資分頁）-->
-      <section class="card" data-key="accounts" id="investAcctCard">
-        <div class="card-head">
-          <span class="card-title">投資帳戶</span>
-          <span class="card-aside amt" id="investAcctTotal">$0</span>
+      <!-- 負債（信用卡未繳、貸款等；點卡片編輯）-->
+      <section class="card asset-card" data-key="liab" id="liabCard">
+        <div class="ac-row">
+          <span class="ac-name">負債</span>
+          <span class="ac-val amt" id="liabTotal">$0</span>
         </div>
-        <div id="investAcctRows"></div>
+        <span class="material-symbols-outlined ac-more">more_horiz</span>
       </section>
 
       <!-- 資產配置（投資自動算、銀行存款＝現金帳戶加總；由 Home.render 產生）-->
@@ -936,16 +943,6 @@
 
     <div class="toast" id="toast"></div>
 
-    <!-- 載入動畫 overlay（玫瑰曲線拖尾粒子）-->
-    <div class="loader-overlay" id="loaderOverlay" aria-hidden="true">
-      <svg id="loaderSvg" viewBox="0 0 100 100" width="120" height="120" fill="none">
-        <g id="loaderRot">
-          <path id="loaderBg" stroke="currentColor" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.1"></path>
-        </g>
-      </svg>
-      <div class="loader-msg" id="loaderMsg">載入中…</div>
-    </div>
-
     <!-- Tab Bar -->
     <nav class="tabbar">
       <button class="tab active" data-target="home"><span class="material-symbols-outlined">account_balance_wallet</span>總覽</button>
@@ -980,7 +977,7 @@
   /* ===== 編輯模式：拖曳排序 + 文字編輯 + 自動保存 ===== */
   const stack = document.getElementById('stack');
   const editBtn = document.getElementById('editBtn');
-  const LAYOUT_KEY = 'qian.home.order.v6';   // 只存卡片順序；數字皆自動算或由各自表單編輯
+  const LAYOUT_KEY = 'qian.home.order.v8';   // 只存卡片順序；數字皆自動算或由各自表單編輯
 
   (function restore(){
     const saved = localStorage.getItem(LAYOUT_KEY);
@@ -1082,61 +1079,9 @@
     renderAmounts();   // 既有函式
   }
 
-  /* ---------- 載入動畫（數學玫瑰曲線 + 拖尾粒子，僅顯示時運行 rAF）---------- */
-  const Loader = (()=>{
-    const NS='http://www.w3.org/2000/svg';
-    const COUNT=64, R=7, PETALS=7, DETAIL=3, SCALE=3.9, TRAIL=0.38;
-    const ROT_MS=28000, PULSE_MS=4200, DUR_MS=4600;
-    let svg, rot, bg, msgEl, overlay, nodes=null, raf=0, t0=0, depth=0;
-
-    const norm = p => ((p%1)+1)%1;
-    function point(p, ds){
-      const t = norm(p)*Math.PI*2;
-      const x = R*Math.cos(t) - DETAIL*ds*Math.cos(PETALS*t);
-      const y = R*Math.sin(t) - DETAIL*ds*Math.sin(PETALS*t);
-      return { x:50+x*SCALE, y:50+y*SCALE };
-    }
-    function buildPath(ds, steps=180){
-      let d='';
-      for(let i=0;i<=steps;i++){ const pt=point(i/steps, ds); d += `${i?'L':'M'} ${pt.x.toFixed(2)} ${pt.y.toFixed(2)} `; }
-      return d;
-    }
-    function ensure(){
-      if(nodes) return;
-      overlay=document.getElementById('loaderOverlay'); svg=document.getElementById('loaderSvg');
-      rot=document.getElementById('loaderRot'); bg=document.getElementById('loaderBg'); msgEl=document.getElementById('loaderMsg');
-      nodes = Array.from({length:COUNT}, ()=>{ const c=document.createElementNS(NS,'circle'); c.setAttribute('fill','currentColor'); rot.appendChild(c); return c; });
-    }
-    function frame(time){
-      const prog=(time%DUR_MS)/DUR_MS;
-      const pulse=(time%PULSE_MS)/PULSE_MS;
-      const ds=0.5 + ((Math.sin(pulse*Math.PI*2 + 0.55)+1)/2)*0.45;
-      rot.setAttribute('transform', `rotate(${-((time%ROT_MS)/ROT_MS)*360} 50 50)`);
-      bg.setAttribute('d', buildPath(ds));
-      for(let i=0;i<COUNT;i++){
-        const off=i/(COUNT-1), pt=point(prog-off*TRAIL, ds), fade=Math.pow(1-off,0.58), n=nodes[i];
-        n.setAttribute('cx', pt.x.toFixed(2)); n.setAttribute('cy', pt.y.toFixed(2));
-        n.setAttribute('r', (1.05+fade*2.75).toFixed(2)); n.setAttribute('opacity', (0.08+fade*0.92).toFixed(3));
-      }
-    }
-    function loop(now){ frame(now-t0); raf=requestAnimationFrame(loop); }
-    return {
-      show(msg){
-        ensure(); depth++; msgEl.textContent = msg || '載入中…';
-        overlay.classList.add('is-on'); overlay.setAttribute('aria-hidden','false');
-        if(!raf){ t0=performance.now(); frame(0); raf=requestAnimationFrame(loop); }
-      },
-      hide(){
-        if(depth>0) depth--;
-        if(depth>0) return;
-        if(overlay){ overlay.classList.remove('is-on'); overlay.setAttribute('aria-hidden','true'); }
-        if(raf){ cancelAnimationFrame(raf); raf=0; }
-      },
-    };
-  })();
-
   function toast(msg, action){
     const t = document.getElementById('toast');
+    t.classList.remove('loading');
     if(action){
       t.innerHTML = `<span></span><button class="toast-act" type="button"></button>`;
       t.querySelector('span').textContent = msg;
@@ -1149,6 +1094,17 @@
     }
     t.classList.add('show');
     clearTimeout(t._timer); t._timer = setTimeout(()=> t.classList.remove('show'), action ? 4200 : 1300);
+  }
+
+  // loading toast：顯示轉圈＋訊息，不自動消失（之後用 toast() 收尾會自動覆蓋並排程消失）
+  function toastLoading(msg){
+    const t = document.getElementById('toast');
+    clearTimeout(t._timer);
+    t.classList.remove('has-act');
+    t.classList.add('loading');
+    t.innerHTML = `<span class="material-symbols-outlined toast-spin">progress_activity</span><span></span>`;
+    t.querySelector('span:last-child').textContent = msg || '載入中…';
+    t.classList.add('show');
   }
 
   /* ---------- 明細：左滑刪除（iOS 風格，附復原）---------- */
@@ -1935,7 +1891,7 @@
       const targets = DB.holdings.filter(h=> this.ySymbol(h));
       if(!targets.length){ toast('沒有可更新的持股（黃金／無代號需手動）'); return; }
       if(btn) btn.classList.add('busy');
-      Loader.show('更新現價中…');
+      toastLoading('更新現價中…');
       let ok=0, fail=0;
       try{
         for(const h of targets){
@@ -1943,7 +1899,6 @@
           catch(e){ fail++; }
         }
       } finally {
-        Loader.hide();
         if(btn) btn.classList.remove('busy');
       }
       if(ok) localStorage.setItem('qian.quoteTs', String(Date.now()));
@@ -2037,11 +1992,18 @@
       const assets = cash + invest;                     // 總資產＝現金＋投資市值
       const net    = assets - liab;                     // 淨資產＝總資產−負債
 
-      document.getElementById('nwValue').textContent     = '$'+fmt(net);
-      document.getElementById('totalAssets').textContent = '$'+fmt(assets);
-      document.getElementById('totalLiab').textContent   = '$'+fmt(liab);
+      document.getElementById('nwValue').textContent   = '$'+fmt(net);
+      document.getElementById('cashTotal').textContent = '$'+fmt(cash);
+      document.getElementById('investTotal').textContent = '$'+fmt(invest);
+      const liabEl = document.getElementById('liabTotal');
+      liabEl.textContent = '$'+fmt(liab);
+      liabEl.classList.toggle('neg', liab>0);          // 有負債才標紅，0 用一般色
 
-      this.renderInvestAccts(invest);
+      // 投資卡更新日期：有報價時間就顯示，否則標示手動
+      const qts = localStorage.getItem('qian.quoteTs');
+      document.getElementById('investDate').textContent =
+        qts ? new Date(+qts).toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric'}) + ' 更新'
+            : '手動價格';
 
       // 資產配置：投資 vs 銀行存款
       const total = assets || 1;                        // 避免除以 0
@@ -2065,32 +2027,6 @@
       // 真值存回 dataset.val 後交給既有眼睛遮罩
       document.querySelectorAll('#view-home .amt').forEach(el=> el.dataset.val = el.textContent);
       renderAmounts();
-    },
-    renderInvestAccts(invest){
-      document.getElementById('investAcctTotal').textContent = '$'+fmt(invest);
-      const rows = document.getElementById('investAcctRows');
-      const groups = {};                                // 依 kind 加總市值/成本/檔數
-      DB.holdings.forEach(h=>{
-        const g = groups[h.kind] || (groups[h.kind] = {mv:0, cost:0, n:0});
-        g.mv += h.price*h.qty; g.cost += h.avgCost*h.qty; g.n++;
-      });
-      const present = ['stock_tw','stock_us','etf','gold'].filter(k=> groups[k]);
-      if(!present.length){ rows.innerHTML = `<div class="acct-empty">尚無持股，到「投資」分頁新增</div>`; return; }
-      rows.innerHTML = present.map(k=>{
-        const g = groups[k], p = g.mv - g.cost, pr = g.cost>0 ? p/g.cost*100 : null;
-        const cls = p>=0 ? 'gain' : 'loss';             // 紅漲綠跌（台股慣例）
-        const prTxt = pr==null ? '—' : `${pr>=0?'+':'−'}${Math.abs(pr).toFixed(1)}%`;
-        return `<div class="acct-row">
-          <div>
-            <div class="acct-name">${KIND_LABEL[k]}</div>
-            <div class="acct-meta"><span class="broker">${g.n} 檔</span></div>
-          </div>
-          <div class="acct-val">
-            <div class="v amt">$${fmt(g.mv)}</div>
-            <div class="p ${cls}">${prTxt}</div>
-          </div>
-        </div>`;
-      }).join('');
     }
   };
 
@@ -2396,9 +2332,17 @@
   document.getElementById('holdDelete').addEventListener('click', ()=> HoldingEditor.remove());
   document.getElementById('holdClose').addEventListener('click', ()=> HoldingEditor.close());
   document.getElementById('holdBackdrop').addEventListener('click', ()=> HoldingEditor.close());
-  // 投資帳戶卡 → 跳投資分頁
-  document.getElementById('investAcctCard').addEventListener('click', ()=>{
+  // 流動資金卡 → 開現金管理
+  document.getElementById('cashCard').addEventListener('click', ()=>{
+    if(!editing) CashManager.open();
+  });
+  // 投資卡 → 跳投資分頁
+  document.getElementById('investCard').addEventListener('click', ()=>{
     if(!editing) document.querySelector('.tab[data-target="invest"]').click();
+  });
+  // 負債卡 → 編輯負債
+  document.getElementById('liabCard').addEventListener('click', ()=>{
+    if(!editing) LiabEditor.open();
   });
   // 現金/存款管理
   document.getElementById('cashList').addEventListener('input', e=>{
@@ -2423,7 +2367,6 @@
   document.getElementById('cashClose').addEventListener('click', ()=> CashManager.save());
   document.getElementById('cashBackdrop').addEventListener('click', ()=> CashManager.save());
   // 總負債編輯
-  document.getElementById('liabBtn').addEventListener('click', ()=>{ if(!editing) LiabEditor.open(); });
   document.getElementById('liabSave').addEventListener('click', ()=> LiabEditor.save());
   document.getElementById('liabClose').addEventListener('click', ()=> LiabEditor.close());
   document.getElementById('liabBackdrop').addEventListener('click', ()=> LiabEditor.close());
