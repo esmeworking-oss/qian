@@ -553,7 +553,7 @@
   .inv-pnl .k{ font-size:14px; color:var(--gray-2); }
   .inv-pnl .v{ font-size:16px; font-weight:700; }
 
-  /* 股票 / 黃金 兩類加總 */
+  /* 類別加總卡：台股 / 美股 / ETF / 黃金 分開 */
   .inv-split{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:2px 0 14px; }
   .inv-split.solo{ grid-template-columns:1fr; }
   .isplit{ background:var(--white); border-radius:16px; padding:13px 15px; }
@@ -563,6 +563,13 @@
   .isplit-n{ margin-left:auto; font-size:12px; color:var(--gray); }
   .isplit-v{ font-size:18px; letter-spacing:-0.01em; }
   .isplit-p{ font-size:13px; margin-top:3px; }
+
+  /* 投資內容篩選 chips */
+  .inv-filter{ display:flex; gap:7px; flex-wrap:wrap; margin:2px 0 12px; }
+  .inv-fchip{ border:none; background:rgba(118,118,128,0.12); color:var(--gray-2);
+    font-size:13px; font-family:var(--font); padding:6px 14px; border-radius:99px;
+    cursor:pointer; transition:background .12s, color .12s; }
+  .inv-fchip.is-on{ background:var(--blue); color:#fff; }
 
   .hold-row{ width:100%; border:none; background:transparent; cursor:pointer; font-family:var(--font);
     display:flex; align-items:flex-start; gap:11px; padding:12px 2px; text-align:left; }
@@ -1284,6 +1291,8 @@
   const STOCK_PALETTE = ['#87ceeb','#f0a3c0','#8fd3cb','#f8cbdd','#87dbeb','#c9f7ff'];
   const KIND_LABEL = { stock_tw:'台股', stock_us:'美股', etf:'ETF', gold:'黃金' };
   const KIND_UNIT  = { stock_tw:'股', stock_us:'股', etf:'股', gold:'克' };
+  const KIND_ORDER = ['stock_tw','stock_us','gold'];         // 投資頁分類顯示／篩選的類別順序（ETF 併入台股）
+  const catOf = k => k==='etf' ? 'stock_tw' : k;             // 持股類別 → 顯示／篩選類別
   function SEED_HOLDINGS(){
     return [
       {kind:'etf',      name:'元大台灣50', symbol:'0050', qty:500, avgCost:118,  price:148},
@@ -1812,6 +1821,7 @@
 
   /* ---------- 投資：總覽渲染 ---------- */
   const Invest = {
+    filter:'all', _sorted:[], _totalMv:0,
     render(){
       const body = document.getElementById('investBody');
       const hs = DB.holdings;
@@ -1835,21 +1845,20 @@
                                         : STOCK_PALETTE[si++ % STOCK_PALETTE.length];
         return { ...r, color };
       });
-      // 股票（台股／美股／ETF）vs 黃金 兩類加總
-      const agg = { stock:{mv:0,cost:0,n:0}, gold:{mv:0,cost:0,n:0} };
-      rows.forEach(r=>{ const g = agg[r.h.kind==='gold' ? 'gold' : 'stock']; g.mv+=r.mv; g.cost+=r.cost; g.n++; });
-      const splitDefs = [
-        {key:'stock', name:'股票', dot:STOCK_PALETTE[0]},
-        {key:'gold',  name:'黃金', dot:GOLD_PALETTE[0]}
-      ].filter(d=> agg[d.key].n>0);
+      // 各類別加總：台股（含 ETF）／美股／黃金 分開顯示（只列出實際持有的類別）
+      const catDot = { stock_tw:STOCK_PALETTE[0], stock_us:STOCK_PALETTE[1], gold:GOLD_PALETTE[0] };
+      const catAgg = {};
+      KIND_ORDER.forEach(k=> catAgg[k] = {mv:0, cost:0, n:0});
+      rows.forEach(r=>{ const g = catAgg[catOf(r.h.kind)]; if(g){ g.mv+=r.mv; g.cost+=r.cost; g.n++; } });
+      const cats = KIND_ORDER.filter(k=> catAgg[k].n>0);
       const splitHTML = `
-        <div class="inv-split${splitDefs.length<2?' solo':''}">
-          ${splitDefs.map(d=>{
-            const g = agg[d.key], p = g.mv-g.cost, pr = g.cost>0 ? p/g.cost*100 : null;
+        <div class="inv-split${cats.length<2?' solo':''}">
+          ${cats.map(k=>{
+            const g = catAgg[k], p = g.mv-g.cost, pr = g.cost>0 ? p/g.cost*100 : null;
             return `<div class="isplit">
               <div class="isplit-top">
-                <span class="isplit-dot" style="background:${d.dot}"></span>
-                <span class="isplit-k">${d.name}</span>
+                <span class="isplit-dot" style="background:${catDot[k]}"></span>
+                <span class="isplit-k">${KIND_LABEL[k]}</span>
                 <span class="isplit-n">${g.n} 檔</span>
               </div>
               <div class="isplit-v amt">$${fmt(g.mv)}</div>
@@ -1857,12 +1866,53 @@
             </div>`;
           }).join('')}
         </div>`;
+      // 投資內容篩選 chips（≥2 類別才需要切換；若目前篩選類別已無持股則重置為全部）
+      if(this.filter!=='all' && !cats.includes(this.filter)) this.filter = 'all';
+      const filterHTML = cats.length>=2 ? `<div class="inv-filter">
+          <button class="inv-fchip${this.filter==='all'?' is-on':''}" data-filter="all">全部</button>
+          ${cats.map(k=>`<button class="inv-fchip${this.filter===k?' is-on':''}" data-filter="${k}">${KIND_LABEL[k]}</button>`).join('')}
+        </div>` : '';
       const qts = localStorage.getItem('qian.quoteTs');
       const quoteBar = `<div class="quote-bar">
           <span class="quote-ts">${qts ? '報價更新 '+new Date(+qts).toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '現價目前為手動值'}</span>
           <button class="quote-refresh" id="quoteRefresh"><span class="material-symbols-outlined">refresh</span>更新現價</button>
         </div>`;
-      const rowsHTML = sorted.map(r=>{
+      this._sorted = sorted; this._totalMv = totalMv;   // 供 renderList 依篩選重繪清單
+      body.innerHTML = `
+        <div class="inv-head">
+          <div class="donut-wrap">
+            <svg class="donut" viewBox="0 0 120 120" id="invDonut"></svg>
+          </div>
+          <div class="inv-info">
+            <div class="inv-total-k">投資總市值</div>
+            <div class="inv-total-v amt">$${fmt(totalMv)}</div>
+            <div class="inv-pnl"><span class="k">總損益</span>
+              <span class="v ${pnl>=0?'gain':'loss'} amt">${pnlText(pnl, totalCost>0?roi:null)}</span></div>
+          </div>
+        </div>
+        ${quoteBar}
+        ${splitHTML}
+        <section class="card">
+          <div class="card-title inv-card-title">投資內容</div>
+          ${filterHTML}
+          <div id="holdList"></div>
+        </section>`;
+      if(totalMv>0) drawDonut(document.getElementById('invDonut'), sorted.map(r=>({cat:{color:r.color}, amt:r.mv})), totalMv);
+      body.querySelectorAll('.inv-fchip').forEach(el=> el.addEventListener('click', ()=>{
+        this.filter = el.dataset.filter;
+        body.querySelectorAll('.inv-fchip').forEach(c=> c.classList.toggle('is-on', c.dataset.filter===this.filter));
+        this.renderList();
+      }));
+      const qr = document.getElementById('quoteRefresh');
+      if(qr) qr.addEventListener('click', ()=> Quote.updateAll(qr));
+      this.renderList();
+    },
+    renderList(){
+      const list = document.getElementById('holdList');
+      if(!list) return;
+      const totalMv = this._totalMv;
+      const shown = this.filter==='all' ? this._sorted : this._sorted.filter(r=> catOf(r.h.kind)===this.filter);
+      list.innerHTML = shown.map(r=>{
         const p = r.mv - r.cost, pr = r.cost>0 ? p/r.cost*100 : null;
         const pct = totalMv>0 ? r.mv/totalMv*100 : 0;
         const unit = KIND_UNIT[r.h.kind] || '股';
@@ -1880,28 +1930,7 @@
           </span>
         </button>`;
       }).join('');
-      body.innerHTML = `
-        <div class="inv-head">
-          <div class="donut-wrap">
-            <svg class="donut" viewBox="0 0 120 120" id="invDonut"></svg>
-          </div>
-          <div class="inv-info">
-            <div class="inv-total-k">投資總市值</div>
-            <div class="inv-total-v amt">$${fmt(totalMv)}</div>
-            <div class="inv-pnl"><span class="k">總損益</span>
-              <span class="v ${pnl>=0?'gain':'loss'} amt">${pnlText(pnl, totalCost>0?roi:null)}</span></div>
-          </div>
-        </div>
-        ${quoteBar}
-        ${splitHTML}
-        <section class="card">
-          <div class="card-title inv-card-title">投資內容</div>
-          ${rowsHTML}
-        </section>`;
-      if(totalMv>0) drawDonut(document.getElementById('invDonut'), sorted.map(r=>({cat:{color:r.color}, amt:r.mv})), totalMv);
-      body.querySelectorAll('.hold-row').forEach(el=> el.addEventListener('click', ()=> HoldingEditor.open(el.dataset.id)));
-      const qr = document.getElementById('quoteRefresh');
-      if(qr) qr.addEventListener('click', ()=> Quote.updateAll(qr));
+      list.querySelectorAll('.hold-row').forEach(el=> el.addEventListener('click', ()=> HoldingEditor.open(el.dataset.id)));
       refreshAmounts();
     }
   };
