@@ -119,6 +119,44 @@
   .networth .nw-main{ display:flex; align-items:center; justify-content:space-between; }
   .networth .nw-value{ font-size:40px; font-weight:800; letter-spacing:-0.03em; font-family:var(--font-num); }
   .networth .chev{ color:var(--gray); }
+  /* 淨資產走勢入口箭頭 */
+  .nw-trend-btn{ flex:none; border:none; background:rgba(118,118,128,0.16); color:var(--ink);
+    width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; transition:transform .12s; }
+  .nw-trend-btn .material-symbols-outlined{ font-size:20px; }
+  .nw-trend-btn:active{ transform:scale(0.9); }
+
+  /* ---- 全螢幕子頁（資產走勢）---- */
+  .subview{ position:fixed; z-index:55; inset:0; max-width:430px; margin:0 auto;
+    background:var(--bg); overflow-y:auto; transform:translateX(100%); visibility:hidden;
+    transition:transform .3s cubic-bezier(.32,.72,0,1), visibility .3s;
+    padding-bottom:calc(env(safe-area-inset-bottom) + 24px); }
+  .subview.is-open{ transform:none; visibility:visible; }
+  .subview-head{ position:sticky; top:0; z-index:1; display:flex; align-items:center; gap:6px;
+    padding:calc(env(safe-area-inset-top) + 10px) var(--pad) 10px;
+    background:var(--bg); border-bottom:1px solid var(--hairline); }
+  .subview-head .sv-title{ font-size:17px; font-weight:700; color:var(--ink); }
+  .subview-body{ padding:18px var(--pad) 0; }
+  /* 走勢：目前值 + 折線圖 */
+  .trend-cur{ display:flex; align-items:baseline; flex-wrap:wrap; gap:10px; }
+  .trend-cur .tc-val{ font-size:30px; font-weight:800; letter-spacing:-0.03em; color:var(--ink); }
+  .trend-cur .tc-delta{ font-size:14px; font-weight:600; }
+  .trend-cur .tc-delta.up{ color:var(--green); }
+  .trend-cur .tc-delta.down{ color:var(--red); }
+  .trend-sub{ font-size:13px; color:var(--gray); margin:4px 0 14px; }
+  .trend-chart{ width:100%; height:auto; display:block; margin-bottom:6px; }
+  .trend-chart .bar-lbl{ fill:var(--gray); font-size:11px; }
+  /* 走勢：明細表 */
+  .trend-table-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; margin-top:8px; }
+  .trend-table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  .trend-table th, .trend-table td{ padding:9px 5px; text-align:right; white-space:nowrap; }
+  .trend-table th{ color:var(--gray); font-weight:600; font-size:12px; border-bottom:1px solid var(--hairline); }
+  .trend-table td{ color:var(--ink); border-bottom:1px solid var(--hairline); }
+  .trend-table th:first-child, .trend-table td:first-child{ text-align:left; }
+  .trend-table .t-net{ font-weight:700; }
+  .trend-table .up{ color:var(--green); }
+  .trend-table .down{ color:var(--red); }
+  .trend-empty{ text-align:center; color:var(--gray-2); font-size:15px; line-height:1.7; padding:64px 0; }
 
   /* ---- 卡片 ---- */
   .stack{ padding:0 var(--pad); display:flex; flex-direction:column; gap:14px; }
@@ -693,6 +731,7 @@
       </div>
       <div class="nw-main">
         <div class="nw-value amt" id="nwValue">$0</div>
+        <button class="nw-trend-btn" id="trendBtn" title="資產走勢"><span class="material-symbols-outlined">show_chart</span></button>
       </div>
     </div>
 
@@ -940,6 +979,15 @@
       </button>
       <input type="file" id="backupFile" accept="application/json,.json" hidden>
     </div>
+
+    <!-- ============ 資產走勢 子頁（從淨資產箭頭開啟）============ -->
+    <section class="subview" id="view-trend" aria-hidden="true">
+      <div class="subview-head">
+        <button class="icon-btn" id="trendBack"><span class="material-symbols-outlined">arrow_back_ios_new</span></button>
+        <span class="sv-title">資產走勢</span>
+      </div>
+      <div class="subview-body" id="trendBody"></div>
+    </section>
 
     <div class="toast" id="toast"></div>
 
@@ -1539,6 +1587,32 @@
       const fill = i===vals.length-1 ? 'var(--exp)' : 'rgba(118,118,128,0.28)';
       s += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw}" height="${h.toFixed(1)}" rx="5" fill="${fill}"/>`;
       s += `<text class="bar-lbl" x="${(x+bw/2).toFixed(1)}" y="146" text-anchor="middle">${labels[i]}月</text>`;
+    });
+    svg.innerHTML = s;
+  }
+  /* 折線圖：pts = [{label, val}]（資產走勢用）*/
+  function drawLine(svg, pts){
+    const W=320, H=160, padL=10, padR=10, padT=16, padB=26;
+    if(!pts.length){ svg.innerHTML=''; return; }
+    const vals = pts.map(p=>p.val);
+    let min=Math.min(...vals), max=Math.max(...vals);
+    if(min===max){ min-=1; max+=1; }                       // 單點或全平：給範圍避免除以 0
+    const span=max-min;
+    const x = i => pts.length===1 ? W/2 : padL + i*(W-padL-padR)/(pts.length-1);
+    const y = v => padT + (1-(v-min)/span)*(H-padT-padB);
+    const pl = pts.map((p,i)=>`${x(i).toFixed(1)},${y(p.val).toFixed(1)}`).join(' ');
+    const y0 = (H-padB).toFixed(1);
+    let s = `<line x1="0" y1="${y0}" x2="${W}" y2="${y0}" stroke="var(--hairline)"/>`;
+    s += `<polygon points="${x(0).toFixed(1)},${y0} ${pl} ${x(pts.length-1).toFixed(1)},${y0}" fill="var(--inc-soft)"/>`;
+    s += `<polyline points="${pl}" fill="none" stroke="var(--blue)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const step = pts.length>7 ? Math.ceil(pts.length/6) : 1;
+    pts.forEach((p,i)=>{
+      const last = i===pts.length-1;
+      s += `<circle cx="${x(i).toFixed(1)}" cy="${y(p.val).toFixed(1)}" r="${last?3.5:2.5}" fill="var(--blue)"/>`;
+      if(i%step===0 || last){
+        const lx = Math.min(Math.max(x(i),14), W-14);      // 夾在兩端內，避免標籤被裁切
+        s += `<text class="bar-lbl" x="${lx.toFixed(1)}" y="${H-8}" text-anchor="middle">${p.label}</text>`;
+      }
     });
     svg.innerHTML = s;
   }
@@ -2425,12 +2499,77 @@
     window.addEventListener('touchcancel', release);
   })();
 
+  /* ---------- 資產快照 / 走勢 ----------
+     純前端無後端排程，無法保證「1 號」當天執行；改以「每月第一次開啟 App 自動補記當月」達成等效效果。*/
+  const Snapshot = {
+    KEY:'qian.snapshots',
+    list(){ try { return JSON.parse(localStorage.getItem(this.KEY)||'[]'); } catch(e){ return []; } },
+    save(arr){ arr.sort((a,b)=> a.ym<b.ym?-1:1); localStorage.setItem(this.KEY, JSON.stringify(arr)); },
+    current(){ const cash=DB.cashTotal(), invest=Home.investTotal(), liab=Home.liab();
+      return { cash, invest, liab, net:cash+invest-liab }; },
+    record(ym, vals){
+      const arr=this.list(), i=arr.findIndex(s=>s.ym===ym);
+      const snap={ ym, ts:Date.now(), ...(vals||this.current()) };
+      if(i>=0) arr[i]=snap; else arr.push(snap);
+      this.save(arr); return snap;
+    },
+    checkpoint(){                                          // 每月第一次開啟自動補記
+      const ym = todayISO().slice(0,7);
+      if(!this.list().some(s=>s.ym===ym)) this.record(ym);
+    },
+    open(){ this.render(); document.getElementById('view-trend').classList.add('is-open');
+      document.getElementById('view-trend').setAttribute('aria-hidden','false'); document.body.style.overflow='hidden'; },
+    close(){ document.getElementById('view-trend').classList.remove('is-open');
+      document.getElementById('view-trend').setAttribute('aria-hidden','true'); document.body.style.overflow=''; },
+    render(){
+      const arr=this.list(), body=document.getElementById('trendBody');
+      if(!arr.length){ body.innerHTML=`<div class="trend-empty">開始累積資料後，<br>這裡會出現每月資產走勢。</div>`; return; }
+      const mLbl = ym => `${+ym.split('-')[1]}月`;                       // 圖：6月
+      const tLbl = ym => { const [y,m]=ym.split('-'); return `${y.slice(2)}/${+m}`; };  // 表：26/6
+      const last=arr[arr.length-1], prev=arr.length>1?arr[arr.length-2]:null;
+      const delta = prev ? last.net-prev.net : null;
+      const pct = prev && prev.net ? delta/Math.abs(prev.net)*100 : null;
+      const deltaHtml = delta==null
+        ? '' : `<span class="tc-delta ${delta>=0?'up':'down'}">${delta>=0?'▲':'▼'} <span class="amt">${(delta>=0?'+':'−')}$${fmt(Math.abs(delta))}</span>${pct!=null?` (${delta>=0?'+':'−'}${Math.abs(pct).toFixed(1)}%)`:''}</span>`;
+      const pts = arr.slice(-12).map(s=>({ label:mLbl(s.ym), val:s.net }));
+      const rows = arr.slice().reverse().map((s,idx,a)=>{
+        const p=a[idx+1], d=p?s.net-p.net:null;            // reverse 後，較舊的月份在後一個 index
+        const dCls=d==null?'':(d>=0?'up':'down');
+        const dTxt=d==null?'—':`${d>=0?'+':'−'}$${fmt(Math.abs(d))}`;
+        return `<tr>
+          <td>${tLbl(s.ym)}</td>
+          <td class="t-net amt">$${fmt(s.net)}</td>
+          <td class="${dCls} amt">${dTxt}</td>
+          <td class="amt">$${fmt(s.cash)}</td>
+          <td class="amt">$${fmt(s.invest)}</td>
+          <td class="amt">$${fmt(s.liab)}</td>
+        </tr>`;
+      }).join('');
+      body.innerHTML = `
+        <div class="trend-cur"><span class="tc-val amt">$${fmt(last.net)}</span>${deltaHtml}</div>
+        <div class="trend-sub">最新（${mLbl(last.ym)}）淨資產 · 已累積 ${arr.length} 個月</div>
+        <svg class="trend-chart" viewBox="0 0 320 160" id="trendChart"></svg>
+        <div class="trend-table-wrap">
+          <table class="trend-table">
+            <thead><tr><th>月份</th><th>淨資產</th><th>較上月</th><th>現金</th><th>投資</th><th>負債</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+      drawLine(document.getElementById('trendChart'), pts);
+      document.querySelectorAll('#view-trend .amt').forEach(el=> el.dataset.val = el.textContent);
+      renderAmounts();
+    }
+  };
+  document.getElementById('trendBtn').addEventListener('click', ()=> Snapshot.open());
+  document.getElementById('trendBack').addEventListener('click', ()=> Snapshot.close());
+
   /* ---------- 啟動 ---------- */
   DB.load();
   Home.render();
+  Snapshot.checkpoint();                                    // DB/Home 就緒後，補記當月快照
   Ledger.initCursor();
   Swipe.init(document.getElementById('pane-detail'));
-  window.QIAN = { DB, Ledger, Sheet, CatEditor, Invest, HoldingEditor, Home, CashManager, LiabEditor, Backup, Advice, clearAll:()=>DB.clearAll() };
+  window.QIAN = { DB, Ledger, Sheet, CatEditor, Invest, HoldingEditor, Home, CashManager, LiabEditor, Backup, Advice, Snapshot, clearAll:()=>DB.clearAll() };
 </script>
 </body>
 </html>
